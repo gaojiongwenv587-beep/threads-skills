@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+
+# uv
+.python-version
+
+# 运行时数据（本地账号、Cookie、缓存图片）
+# 这些目录在用户 home 下，不在项目内，无需忽略
+# 但如果有人把 ~/.threads 软链进来需要注意
+
+# 测试产物
+.pytest_cache/
+htmlcov/
+.coverage
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
