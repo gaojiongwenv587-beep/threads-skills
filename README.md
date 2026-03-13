@@ -100,6 +100,29 @@ python scripts/cli.py --account work post-thread --content "工作帖子"
 python scripts/cli.py list-accounts
 ```
 
+## 批量回覆助手
+
+> 需要 tkinter：`brew install python-tk`（macOS）
+
+GUI 弹窗逐条填写评论，填写与发送**并行执行**，无需等待。
+
+```bash
+# 1. 获取帖子并写入临时文件（由 OpenClaw 完成）
+python scripts/cli.py list-feeds --limit 20
+
+# 2. 启动助手
+uv run python scripts/reply_assistant.py --posts-file /tmp/threads_batch.json
+
+# 多账号：
+uv run python scripts/reply_assistant.py --posts-file /tmp/threads_batch.json --account myaccount
+```
+
+弹窗操作：**發布**（Ctrl+Enter）/ **跳過**（Esc）/ **結束**
+
+- 填完一条点发布，下一条弹窗**立即出现**，背景同时执行回复
+- 已回复过的帖子自动跳过（`~/.threads/replied_posts.json` 去重）
+- 脚本退出后向 stdout 输出摘要 JSON，供 OpenClaw 读取
+
 ## 图片发布
 
 支持本地路径和图片 URL，URL 会自动下载缓存到 `~/.threads/images/`：
