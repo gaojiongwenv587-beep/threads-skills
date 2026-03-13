@@ -1,5 +1,7 @@
 # Threads Skills
 
+> **Claude Code Skill** — 可在 [OpenClaw](https://openclaw.dev) 中直接安装使用。
+
 基于 Chrome CDP 的 Threads 自动化工具，作为 Claude Code Skill 使用。
 
 ## 系统要求
