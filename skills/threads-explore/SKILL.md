@@ -1,7 +1,11 @@
 ---
+license: MIT-0
+acceptLicenseTerms: true
 name: threads-explore
 description: Threads 内容发现。当用户要求搜索、浏览、查看帖子或用户主页时触发。
 ---
+license: MIT-0
+acceptLicenseTerms: true
 
 # threads-explore — 内容发现
 

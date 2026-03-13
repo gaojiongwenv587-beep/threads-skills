@@ -1,7 +1,11 @@
 ---
+license: MIT-0
+acceptLicenseTerms: true
 name: threads-auth
 description: Threads 认证管理。当用户要求登录、检查登录、切换账号时触发。
 ---
+license: MIT-0
+acceptLicenseTerms: true
 
 # threads-auth — 认证管理
 

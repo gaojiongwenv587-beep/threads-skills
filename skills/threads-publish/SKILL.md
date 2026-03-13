@@ -1,7 +1,11 @@
 ---
+license: MIT-0
+acceptLicenseTerms: true
 name: threads-publish
 description: Threads 内容发布。当用户要求发帖、发布 Thread、写内容时触发。
 ---
+license: MIT-0
+acceptLicenseTerms: true
 
 # threads-publish — 内容发布
 

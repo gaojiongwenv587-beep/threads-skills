@@ -1,7 +1,11 @@
 ---
+license: MIT-0
+acceptLicenseTerms: true
 name: threads-interact
 description: Threads 社交互动。当用户要求点赞、转发、回复、关注时触发。
 ---
+license: MIT-0
+acceptLicenseTerms: true
 
 # threads-interact — 社交互动
 

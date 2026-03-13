@@ -1,7 +1,11 @@
 ---
+license: MIT-0
+acceptLicenseTerms: true
 name: threads-content-ops
 description: Threads 复合运营。当用户要求竞品分析、热点追踪、批量互动、内容策划时触发。
 ---
+license: MIT-0
+acceptLicenseTerms: true
 
 # threads-content-ops — 复合运营
 
