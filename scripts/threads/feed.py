@@ -60,26 +60,41 @@ def list_feeds(page: Page, max_posts: int = 20) -> FeedResponse:
     page.wait_for_load(timeout=20)
     navigation_delay()
 
-    seen_urls: set[str] = set()
+    seen_keys: set[str] = set()
     all_posts: list[ThreadPost] = []
 
-    # 滚动多次直到凑满 max_posts
-    max_scrolls = 10
+    # 每次滚动预期能加载约 5 条新帖，多留一倍余量
+    max_scrolls = max(15, max_posts // 4 * 3)
+    stall_count = 0  # 连续无新增次数，超过阈值则放弃
+
     for scroll_i in range(max_scrolls):
         batch = _extract_posts_from_page(page, max_posts * 3)
+        prev_len = len(all_posts)
         for p in batch:
-            key = p.url or p.content[:30]
-            if key and key not in seen_urls:
-                seen_urls.add(key)
+            # 优先用 post_id 去重，其次 url，最后 content 前缀
+            key = p.post_id or p.url or p.content[:50]
+            if key and key not in seen_keys:
+                seen_keys.add(key)
                 all_posts.append(p)
 
-        logger.info("第 %d 次滚动后共 %d 条", scroll_i + 1, len(all_posts))
+        new_count = len(all_posts) - prev_len
+        logger.info("第 %d 次滚动后共 %d 条（新增 %d）", scroll_i + 1, len(all_posts), new_count)
+
         if len(all_posts) >= max_posts:
             break
 
-        # 滚动到底部触发懒加载
-        page.scroll_by(0, 1200)
-        sleep_random(1500, 2500)
+        # 连续 3 次没有新增，说明已到达 Feed 末尾
+        if new_count == 0:
+            stall_count += 1
+            if stall_count >= 3:
+                logger.info("连续 %d 次无新帖，停止滚动", stall_count)
+                break
+        else:
+            stall_count = 0
+
+        # 滚动到底部触发懒加载（比固定像素更可靠）
+        page.scroll_to_bottom()
+        sleep_random(2000, 3500)
 
     if not all_posts:
         raise NoFeedsError()

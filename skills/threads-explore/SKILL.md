@@ -42,6 +42,8 @@ python scripts/cli.py list-feeds --limit 30
 - `createdAt` 优先返回 ISO 时间戳，DOM 解析时可能返回相对时间（如 "3小时"）
 - `likeCount` 为 Threads 显示格式（含逗号分隔）
 - `postId` 在首页 Feed 中可能为空，使用 `url` 传给互动命令
+- **批量抓取**：`--limit 50` 会自动滚动多次直到凑满，耗时约 1-3 分钟；连续 3 次无新帖自动停止
+- **定时任务**：`list-feeds` 每次结果高度重叠（For You 算法池稳定）；若需增量抓新帖，改用 `search --query 关键词 --type recent`
 
 ### 搜索
 
