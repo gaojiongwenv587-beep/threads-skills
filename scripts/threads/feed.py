@@ -68,11 +68,13 @@ def list_feeds(page: Page, max_posts: int = 20) -> FeedResponse:
     stall_count = 0  # 连续无新增次数，超过阈值则放弃
 
     for scroll_i in range(max_scrolls):
-        batch = _extract_posts_from_page(page, max_posts * 3)
+        # 第一次可尝试 JSON 路径；滚动后新帖只在 DOM，跳过 JSON 避免重复
+        batch = _extract_posts_from_page(page, max_posts * 3) if scroll_i == 0 \
+            else _extract_from_dom(page, max_posts * 3)
         prev_len = len(all_posts)
         for p in batch:
-            # 优先用 post_id 去重，其次 url，最后 content 前缀
-            key = p.post_id or p.url or p.content[:50]
+            # URL 在 JSON/DOM 两路径都一致，优先用 URL 去重
+            key = p.url or p.content[:50]
             if key and key not in seen_keys:
                 seen_keys.add(key)
                 all_posts.append(p)
