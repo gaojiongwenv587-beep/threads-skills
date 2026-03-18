@@ -149,10 +149,14 @@ def reply_thread(page: Page, post_url: str, content: str) -> ActionResult:
         _t.sleep(_r.uniform(0.05, 0.1))
         page.mouse_click(x, y)
         reply_clicked = True
-        # 等待 dialog 出现（最多 5 秒）
-        for _ in range(10):
+        # 等待 dialog 内的 contenteditable 出现（最多 6 秒）
+        for _ in range(12):
             _t.sleep(0.5)
-            if page.evaluate("!!document.querySelector('div[role=\"dialog\"]')"):
+            ready = page.evaluate(
+                "!!document.querySelector('div[role=\"dialog\"] div[contenteditable=\"true\"]')"
+                " || !!document.querySelector('div[role=\"dialog\"] textarea')"
+            )
+            if ready:
                 break
 
     if not reply_clicked:
