@@ -121,16 +121,41 @@ def reply_thread(page: Page, post_url: str, content: str) -> ActionResult:
     page.wait_for_load(timeout=15)
     sleep_random(1500, 2500)
 
+    # 点击回复按钮：找 svg[aria-label="回复"] 的父级 [role="button"] 并点击
     reply_clicked = False
-    for selector in [REPLY_BUTTON]:
-        if page.has_element(selector):
-            page.click_element(selector)
-            reply_clicked = True
-            sleep_random(800, 1500)
-            break
+    btn_coords = page.evaluate(
+        """
+        (() => {
+            const svgs = document.querySelectorAll(
+                'svg[aria-label="回复"], svg[aria-label="Reply"]'
+            );
+            for (const svg of svgs) {
+                const btn = svg.closest('[role="button"]') || svg.parentElement;
+                if (!btn) continue;
+                btn.scrollIntoView({block: 'center'});
+                const rect = btn.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0)
+                    return {x: rect.left + rect.width / 2, y: rect.top + rect.height / 2};
+            }
+            return null;
+        })()
+        """
+    )
+    if btn_coords:
+        import random as _r, time as _t
+        x = btn_coords["x"] + _r.uniform(-3, 3)
+        y = btn_coords["y"] + _r.uniform(-3, 3)
+        page.mouse_move(x, y)
+        _t.sleep(_r.uniform(0.05, 0.1))
+        page.mouse_click(x, y)
+        reply_clicked = True
+        # 等待 dialog 出现（最多 5 秒）
+        for _ in range(10):
+            _t.sleep(0.5)
+            if page.evaluate("!!document.querySelector('div[role=\"dialog\"]')"):
+                break
 
     if not reply_clicked:
-        # 有些帖子可以直接在底部的文本框回复
         logger.info("未找到回复按钮，尝试直接在文本框回复")
 
     # 找回复文本框并输入
