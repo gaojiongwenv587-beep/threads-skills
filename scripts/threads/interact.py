@@ -196,19 +196,22 @@ def reply_thread(page: Page, post_url: str, content: str) -> ActionResult:
                 page.mouse_move(x, y)
                 _t.sleep(_r.uniform(0.05, 0.1))
                 page.mouse_click(x, y)
-                # 等待 dialog 关闭（发布完成的标志），最多等 15 秒
-                for _ in range(30):
+                # 等待"已发布"toast 出现（Threads 发布成功的最终信号），最多等 20 秒
+                published = False
+                for _ in range(40):
                     _t.sleep(0.5)
-                    still_open = page.evaluate(
-                        "!!document.querySelector('div[role=\"dialog\"]')"
+                    published = page.evaluate(
+                        "document.body.innerText.includes('已发布') "
+                        "|| document.body.innerText.includes('Posted')"
                     )
-                    if not still_open:
+                    if published:
                         break
-                sleep_random(500, 800)
+                # toast 出现后稍等让它稳定，再关闭
+                sleep_random(800, 1200)
                 return ActionResult(
                     post_id=post_url,
                     success=True,
-                    message="回复发布成功",
+                    message="回复发布成功" if published else "已提交，请手动确认是否发布成功",
                 )
 
             return ActionResult(
