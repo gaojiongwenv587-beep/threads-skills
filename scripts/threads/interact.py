@@ -171,7 +171,15 @@ def reply_thread(page: Page, post_url: str, content: str) -> ActionResult:
                 page.mouse_move(x, y)
                 _t.sleep(_r.uniform(0.05, 0.1))
                 page.mouse_click(x, y)
-                sleep_random(1000, 2000)
+                # 等待 dialog 关闭（发布完成的标志），最多等 15 秒
+                for _ in range(30):
+                    _t.sleep(0.5)
+                    still_open = page.evaluate(
+                        "!!document.querySelector('div[role=\"dialog\"]')"
+                    )
+                    if not still_open:
+                        break
+                sleep_random(500, 800)
                 return ActionResult(
                     post_id=post_url,
                     success=True,
