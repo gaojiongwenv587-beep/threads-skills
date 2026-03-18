@@ -94,9 +94,15 @@ def list_feeds(page: Page, max_posts: int = 20) -> FeedResponse:
         else:
             stall_count = 0
 
-        # 滚动到底部触发懒加载（比固定像素更可靠）
+        # 滚动到底部，等待页面高度增加（新帖渲染完）再继续
+        prev_height = page.evaluate("document.body.scrollHeight")
         page.scroll_to_bottom()
-        sleep_random(2000, 3500)
+        # 最多等 6 秒，检测到高度增加即可提前继续
+        for _ in range(12):
+            sleep_random(400, 600)
+            new_height = page.evaluate("document.body.scrollHeight")
+            if new_height > prev_height:
+                break
 
     if not all_posts:
         raise NoFeedsError()
