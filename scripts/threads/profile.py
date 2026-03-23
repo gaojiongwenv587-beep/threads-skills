@@ -149,51 +149,96 @@ def _extract_user_from_dom(page: Page, username: str) -> ThreadsUser:
 
 
 def _extract_user_posts(page: Page, max_posts: int) -> list[ThreadPost]:
-    """提取用户主页的帖子列表。"""
-    # 复用 feed 的 JSON 提取逻辑
-    raw = page.evaluate(
-        """
-        (() => {
-            const scripts = document.querySelectorAll('script[type="application/json"]');
-            for (const s of scripts) {
-                try {
-                    const d = JSON.parse(s.textContent);
-                    if (JSON.stringify(d).includes('thread_items')) {
-                        return s.textContent;
-                    }
-                } catch(e) {}
-            }
-            return null;
-        })()
-        """
-    )
+    """提取用户主页的帖子列表，滚动加载直到满足数量要求。"""
+    from .human import sleep_random
 
-    if not raw:
-        return []
+    seen_keys: set[str] = set()
+    all_posts: list[ThreadPost] = []
+    max_scrolls = max(10, max_posts // 4 * 3)
+    stall_count = 0
 
-    try:
-        data = json.loads(raw)
-        posts: list[ThreadPost] = []
+    for scroll_i in range(max_scrolls):
+        # 遍历所有含 thread_items 的 script 标签
+        scripts_json = page.evaluate(
+            """
+            (() => {
+                const scripts = document.querySelectorAll('script[type="application/json"]');
+                const results = [];
+                for (const s of scripts) {
+                    const t = s.textContent || '';
+                    if (t.length > 500 && t.includes('thread_items')) results.push(t);
+                }
+                results.sort((a, b) => b.length - a.length);
+                return JSON.stringify(results);
+            })()
+            """
+        )
 
-        def _find(obj: object) -> None:
-            if len(posts) >= max_posts:
-                return
-            if isinstance(obj, dict):
-                if "thread_items" in obj:
-                    for item in obj["thread_items"]:
-                        if isinstance(item, dict) and "post" in item:
-                            post = _parse_single_post(item["post"])
-                            if post:
-                                posts.append(post)
-                else:
-                    for v in obj.values():
-                        _find(v)
-            elif isinstance(obj, list):
-                for item in obj:
-                    _find(item)
+        batch: list[ThreadPost] = []
+        if scripts_json:
+            try:
+                scripts = json.loads(scripts_json)
+                for raw in scripts:
+                    try:
+                        data = json.loads(raw)
+                        batch.extend(_parse_posts_from_json(data, max_posts))
+                    except Exception as e:
+                        logger.debug("解析用户帖子 JSON 失败: %s", e)
+            except Exception:
+                pass
 
-        _find(data)
-        return posts[:max_posts]
-    except Exception as e:
-        logger.debug("提取用户帖子失败: %s", e)
-        return []
+        prev_len = len(all_posts)
+        for p in batch:
+            key = p.post_id or p.url or p.content[:50]
+            if key and key not in seen_keys:
+                seen_keys.add(key)
+                all_posts.append(p)
+
+        new_count = len(all_posts) - prev_len
+        logger.info("用户帖子第 %d 轮后共 %d 条（新增 %d）", scroll_i + 1, len(all_posts), new_count)
+
+        if len(all_posts) >= max_posts:
+            break
+
+        if new_count == 0:
+            stall_count += 1
+            if stall_count >= 3:
+                logger.info("连续 %d 次无新增，停止滚动", stall_count)
+                break
+        else:
+            stall_count = 0
+
+        prev_height = page.evaluate("document.body.scrollHeight")
+        page.scroll_to_bottom()
+        for _ in range(12):
+            sleep_random(400, 600)
+            new_height = page.evaluate("document.body.scrollHeight")
+            if new_height > prev_height:
+                break
+
+    return all_posts[:max_posts]
+
+
+def _parse_posts_from_json(data: object, max_posts: int) -> list[ThreadPost]:
+    """递归从 JSON 中提取帖子。"""
+    posts: list[ThreadPost] = []
+
+    def _find(obj: object) -> None:
+        if len(posts) >= max_posts:
+            return
+        if isinstance(obj, dict):
+            if "thread_items" in obj:
+                for item in obj["thread_items"]:
+                    if isinstance(item, dict) and "post" in item:
+                        post = _parse_single_post(item["post"])
+                        if post:
+                            posts.append(post)
+            else:
+                for v in obj.values():
+                    _find(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                _find(item)
+
+    _find(data)
+    return posts
