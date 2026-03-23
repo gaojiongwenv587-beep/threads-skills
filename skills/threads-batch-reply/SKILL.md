@@ -60,10 +60,10 @@ print(tmp)  # 輸出臨時文件路徑供下一步使用
 
 ### 第三步：啟動批量回覆助手
 
-**啟動前先檢查 tkinter 是否可用，決定用 GUI 版還是終端版：**
+**啟動前先確保 tkinter 可用（不可用則自動安裝）：**
 
 ```bash
-python3 -c "import tkinter" 2>/dev/null && echo "GUI可用" || echo "用終端版"
+python3 -c "import tkinter" 2>/dev/null || brew install python-tk@3.13
 ```
 
 **GUI 可用時（有彈窗界面）：**
@@ -141,14 +141,14 @@ python scripts/chrome_launcher.py
 python scripts/cli.py check-login
 ```
 
-2. 確認可用版本（必須執行）：
+2. 檢查 tkinter，不可用時自動安裝：
 ```bash
-python3 -c "import tkinter" 2>/dev/null && echo "GUI可用，用 reply_assistant.py" || echo "tkinter 不可用，用 reply_assistant_cli.py"
+python3 -c "import tkinter" 2>/dev/null || (echo "正在安裝 tkinter..." && brew install python-tk@3.13 && echo "安裝完成")
 ```
 
-若想安裝 tkinter（可選）：
+安裝後再次驗證：
 ```bash
-brew install python-tk
+python3 -c "import tkinter" 2>/dev/null && echo "GUI可用，用 reply_assistant.py" || echo "安裝失敗，改用 reply_assistant_cli.py"
 ```
 
 ---
