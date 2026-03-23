@@ -2,7 +2,15 @@
 
 > **Claude Code Skill** — 可在 [OpenClaw](https://openclaw.dev) 中直接安装使用。
 
-基于 Chrome CDP 的 Threads 自动化工具，作为 Claude Code Skill 使用。
+用 AI 驱动的方式操作 Threads，把重复的社媒运营工作交给 Claude 自动完成。
+
+**核心能力：**
+- 📥 **批量抓取** — 首页推荐 / 关键词搜索 / 用户主页，滚动加载直到满足数量，点赞数、回复数完整
+- ✍️ **发帖 & 回复** — 支持图文发布、批量回复、自动防重复
+- 👥 **多账号管理** — 账号间完全隔离，一条命令切换
+- 🤖 **OpenClaw 友好** — 所有命令 JSON 输出，Claude 可直接读取并串联工作流
+
+基于 **Chrome CDP** 驱动真实浏览器，无需破解 API，登录一次长期有效。
 
 ## 系统要求
 
