@@ -48,46 +48,90 @@ def search(
     navigation_delay()
 
     result = SearchResult(query=query)
+    seen_post_keys: set[str] = set()
+    seen_usernames: set[str] = set()
 
-    # 提取搜索结果：遍历所有足够大的 JSON script，递归搜索
-    scripts_json = page.evaluate(
-        """
-        (() => {
-            const scripts = document.querySelectorAll('script[type="application/json"]');
-            const results = [];
-            for (const s of scripts) {
-                if ((s.textContent || '').length > 500) results.push(s.textContent);
-            }
-            results.sort((a, b) => b.length - a.length);
-            return JSON.stringify(results);
-        })()
-        """
-    )
+    # profiles 模式不需要滚动，内容有限；帖子模式需要滚动加载
+    max_scrolls = 1 if search_type == "profiles" else max(10, max_results // 4 * 3)
+    stall_count = 0
 
-    if scripts_json:
-        try:
-            scripts = json.loads(scripts_json)
-            for raw in scripts:
-                if len(result.posts) >= max_results and len(result.users) >= max_results:
-                    break
-                try:
-                    data = json.loads(raw)
-                    posts, users = _parse_search_results(data, max_results)
-                    for p in posts:
-                        if p.post_id not in {x.post_id for x in result.posts}:
-                            result.posts.append(p)
-                    for u in users:
-                        if u.username not in {x.username for x in result.users}:
-                            result.users.append(u)
-                except Exception as e:
-                    logger.debug("解析搜索结果 JSON 失败: %s", e)
-        except Exception:
-            pass
+    for scroll_i in range(max_scrolls):
+        # 每轮先尝试 JSON 路径，再 DOM 降级
+        batch_posts: list[ThreadPost] = []
+        batch_users: list[ThreadsUser] = []
 
-    if not result.posts and not result.users:
-        # 降级：从 DOM 提取
-        result.posts = _extract_search_results_from_dom(page, max_results)
+        scripts_json = page.evaluate(
+            """
+            (() => {
+                const scripts = document.querySelectorAll('script[type="application/json"]');
+                const results = [];
+                for (const s of scripts) {
+                    if ((s.textContent || '').length > 500) results.push(s.textContent);
+                }
+                results.sort((a, b) => b.length - a.length);
+                return JSON.stringify(results);
+            })()
+            """
+        )
 
+        if scripts_json:
+            try:
+                scripts = json.loads(scripts_json)
+                for raw in scripts:
+                    try:
+                        data = json.loads(raw)
+                        posts, users = _parse_search_results(data, max_results)
+                        batch_posts.extend(posts)
+                        batch_users.extend(users)
+                    except Exception as e:
+                        logger.debug("解析搜索结果 JSON 失败: %s", e)
+            except Exception:
+                pass
+
+        # JSON 没拿到帖子则 DOM 降级
+        if not batch_posts:
+            batch_posts = _extract_search_results_from_dom(page, max_results)
+
+        prev_len = len(result.posts) + len(result.users)
+        for p in batch_posts:
+            key = p.post_id or p.url or p.content[:50]
+            if key and key not in seen_post_keys:
+                seen_post_keys.add(key)
+                result.posts.append(p)
+        for u in batch_users:
+            if u.username and u.username not in seen_usernames:
+                seen_usernames.add(u.username)
+                result.users.append(u)
+
+        new_count = len(result.posts) + len(result.users) - prev_len
+        logger.info(
+            "搜索第 %d 轮后共 %d 条帖子 / %d 个用户（新增 %d）",
+            scroll_i + 1, len(result.posts), len(result.users), new_count,
+        )
+
+        if len(result.posts) >= max_results:
+            break
+
+        # 连续 3 次无新增则停止
+        if new_count == 0:
+            stall_count += 1
+            if stall_count >= 3:
+                logger.info("连续 %d 次无新增，停止滚动", stall_count)
+                break
+        else:
+            stall_count = 0
+
+        # 滚动到底部，等待新内容渲染
+        prev_height = page.evaluate("document.body.scrollHeight")
+        page.scroll_to_bottom()
+        for _ in range(12):
+            sleep_random(400, 600)
+            new_height = page.evaluate("document.body.scrollHeight")
+            if new_height > prev_height:
+                break
+
+    result.posts = result.posts[:max_results]
+    result.users = result.users[:max_results]
     return result
 
 
@@ -170,15 +214,19 @@ def _extract_search_results_from_dom(page: Page, max_results: int) -> list[Threa
 
     try:
         items = json.loads(items_data)
-        return [
-            ThreadPost(
+        posts = []
+        for item in items:
+            if not (item.get("content") or item.get("username")):
+                continue
+            url = item.get("url", "")
+            post_id = url.split("/post/")[-1].strip("/") if "/post/" in url else ""
+            posts.append(ThreadPost(
+                post_id=post_id,
                 author=ThreadsUser(username=item.get("username", "")),
                 content=item.get("content", ""),
                 created_at=item.get("timestamp", ""),
-                url=item.get("url", ""),
-            )
-            for item in items
-            if item.get("content") or item.get("username")
-        ]
+                url=url,
+            ))
+        return posts
     except Exception:
         return []
