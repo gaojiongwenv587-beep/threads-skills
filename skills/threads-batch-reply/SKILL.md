@@ -60,14 +60,31 @@ print(tmp)  # 輸出臨時文件路徑供下一步使用
 
 ### 第三步：啟動批量回覆助手
 
+**啟動前先檢查 tkinter 是否可用，決定用 GUI 版還是終端版：**
+
+```bash
+python3 -c "import tkinter" 2>/dev/null && echo "GUI可用" || echo "用終端版"
+```
+
+**GUI 可用時（有彈窗界面）：**
 ```bash
 uv run python scripts/reply_assistant.py --posts-file /tmp/threads_batch_xxx.json
 
 # 多帳號：
-uv run python scripts/reply_assistant.py --posts-file /tmp/threads_batch_xxx.json --account myaccount --port 8666
+uv run python scripts/reply_assistant.py --posts-file /tmp/threads_batch_xxx.json --account myaccount
 ```
 
-腳本啟動後 GUI 與瀏覽器並行運行：用戶在彈窗填完一條點「發布」，回覆立即在背景執行，同時下一條彈窗立刻出現。全部填完後等待剩餘回覆執行完畢自動退出。
+**tkinter 不可用時（終端交互）：**
+```bash
+uv run python scripts/reply_assistant_cli.py --posts-file /tmp/threads_batch_xxx.json
+
+# 多帳號：
+uv run python scripts/reply_assistant_cli.py --posts-file /tmp/threads_batch_xxx.json --account myaccount
+```
+
+> ⚠️ 腳本路徑固定為 `scripts/reply_assistant.py` 和 `scripts/reply_assistant_cli.py`，不要去其他目錄找。
+
+兩個版本的 `--posts-file`、`--account`、`--port` 參數完全相同，輸出的摘要 JSON 格式也一致。
 
 ### 第四步：讀取結果 JSON，匯報給用戶
 
@@ -124,7 +141,12 @@ python scripts/chrome_launcher.py
 python scripts/cli.py check-login
 ```
 
-2. tkinter 可用（macOS 可能需要）：
+2. 確認可用版本（必須執行）：
+```bash
+python3 -c "import tkinter" 2>/dev/null && echo "GUI可用，用 reply_assistant.py" || echo "tkinter 不可用，用 reply_assistant_cli.py"
+```
+
+若想安裝 tkinter（可選）：
 ```bash
 brew install python-tk
 ```
