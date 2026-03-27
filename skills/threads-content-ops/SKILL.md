@@ -3,6 +3,18 @@ license: MIT-0
 acceptLicenseTerms: true
 name: threads-content-ops
 description: "Threads 複合運營工作流。觸發詞：競品分析、分析競爭對手、熱點追蹤、找熱門話題、批量互動、批量操作、內容策劃、運營計劃、推廣評論、定時抓帖評論、自動評論、篩選帖子並評論、醫美推廣。"
+version: 1.0.0
+metadata:
+  openclaw:
+    homepage: https://github.com/gaojiongwenv587-beep/threads-skills
+    requires:
+      bins:
+        - python3
+        - uv
+    emoji: "📊"
+    os:
+      - darwin
+      - linux
 ---
 license: MIT-0
 acceptLicenseTerms: true

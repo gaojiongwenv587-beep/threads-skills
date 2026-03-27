@@ -3,6 +3,18 @@ license: MIT-0
 acceptLicenseTerms: true
 name: threads-batch-reply
 description: "Threads 批量回覆助手。觸發詞：批量回覆、批量評論、逐條回覆、一次回覆多個帖子、GUI回覆、彈窗回覆、reply_assistant、幫我回覆這些帖子、批量發評論。"
+version: 1.0.0
+metadata:
+  openclaw:
+    homepage: https://github.com/gaojiongwenv587-beep/threads-skills
+    requires:
+      bins:
+        - python3
+        - uv
+    emoji: "📨"
+    os:
+      - darwin
+      - linux
 ---
 
 # threads-batch-reply — 批量回覆助手

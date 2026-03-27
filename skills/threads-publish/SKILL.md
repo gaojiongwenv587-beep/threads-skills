@@ -3,6 +3,18 @@ license: MIT-0
 acceptLicenseTerms: true
 name: threads-publish
 description: "Threads 發帖與內容發布。觸發詞：發帖、發布、寫帖子、po文、發Thread、寫一條、發一條、帶圖發帖、發圖片、post-thread、fill-thread、click-publish。"
+version: 1.0.0
+metadata:
+  openclaw:
+    homepage: https://github.com/gaojiongwenv587-beep/threads-skills
+    requires:
+      bins:
+        - python3
+        - uv
+    emoji: "✍️"
+    os:
+      - darwin
+      - linux
 ---
 license: MIT-0
 acceptLicenseTerms: true

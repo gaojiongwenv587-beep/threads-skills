@@ -3,6 +3,18 @@ license: MIT-0
 acceptLicenseTerms: true
 name: threads-auth
 description: "Threads 認證與帳號管理。觸發詞：登錄、登出、檢查登錄、是否已登錄、登入狀態、切換帳號、退出帳號、清除Cookie、添加帳號、新增帳號、多帳號、帳號列表、設置默認帳號、刪除帳號、check-login。"
+version: 1.0.0
+metadata:
+  openclaw:
+    homepage: https://github.com/gaojiongwenv587-beep/threads-skills
+    requires:
+      bins:
+        - python3
+        - uv
+    emoji: "🔐"
+    os:
+      - darwin
+      - linux
 ---
 license: MIT-0
 acceptLicenseTerms: true

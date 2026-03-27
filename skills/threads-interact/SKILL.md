@@ -3,6 +3,18 @@ license: MIT-0
 acceptLicenseTerms: true
 name: threads-interact
 description: "Threads 社交互動。觸發詞：點讚、按讚、like、轉發、repost、回覆、評論、reply、關注、follow、對這個帖子點讚、回覆這條帖子、like-thread、reply-thread、repost-thread、follow-user。"
+version: 1.0.0
+metadata:
+  openclaw:
+    homepage: https://github.com/gaojiongwenv587-beep/threads-skills
+    requires:
+      bins:
+        - python3
+        - uv
+    emoji: "💬"
+    os:
+      - darwin
+      - linux
 ---
 license: MIT-0
 acceptLicenseTerms: true

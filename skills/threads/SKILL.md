@@ -7,6 +7,18 @@ description: |
   首頁、刷一下、抓帖子、瀏覽、搜索、查帖子、看用戶、爬取、抓取、
   點讚、按讚、轉發、回覆、評論、關注、互動、
   批量回覆、批量評論、競品分析、熱點追蹤、推廣評論。
+version: 1.0.0
+metadata:
+  openclaw:
+    homepage: https://github.com/gaojiongwenv587-beep/threads-skills
+    requires:
+      bins:
+        - python3
+        - uv
+    emoji: "🧵"
+    os:
+      - darwin
+      - linux
 ---
 
 # threads — Threads 全功能自动化
