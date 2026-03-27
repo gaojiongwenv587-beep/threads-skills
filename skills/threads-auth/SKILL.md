@@ -2,7 +2,7 @@
 license: MIT-0
 acceptLicenseTerms: true
 name: threads-auth
-description: Threads 认证管理。当用户要求登录、检查登录、切换账号时触发。
+description: "Threads 認證與帳號管理。觸發詞：登錄、登出、檢查登錄、是否已登錄、登入狀態、切換帳號、退出帳號、清除Cookie、添加帳號、新增帳號、多帳號、帳號列表、設置默認帳號、刪除帳號、check-login。"
 ---
 license: MIT-0
 acceptLicenseTerms: true

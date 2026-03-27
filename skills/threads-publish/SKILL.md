@@ -2,7 +2,7 @@
 license: MIT-0
 acceptLicenseTerms: true
 name: threads-publish
-description: Threads 内容发布。当用户要求发帖、发布 Thread、写内容时触发。
+description: "Threads 發帖與內容發布。觸發詞：發帖、發布、寫帖子、po文、發Thread、寫一條、發一條、帶圖發帖、發圖片、post-thread、fill-thread、click-publish。"
 ---
 license: MIT-0
 acceptLicenseTerms: true

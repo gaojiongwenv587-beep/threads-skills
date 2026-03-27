@@ -2,7 +2,7 @@
 license: MIT-0
 acceptLicenseTerms: true
 name: threads-interact
-description: Threads 社交互动。当用户要求点赞、转发、回复、关注时触发。
+description: "Threads 社交互動。觸發詞：點讚、按讚、like、轉發、repost、回覆、評論、reply、關注、follow、對這個帖子點讚、回覆這條帖子、like-thread、reply-thread、repost-thread、follow-user。"
 ---
 license: MIT-0
 acceptLicenseTerms: true

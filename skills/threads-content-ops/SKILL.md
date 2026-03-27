@@ -2,7 +2,7 @@
 license: MIT-0
 acceptLicenseTerms: true
 name: threads-content-ops
-description: Threads 复合运营。当用户要求竞品分析、热点追踪、批量互动、内容策划时触发。
+description: "Threads 複合運營工作流。觸發詞：競品分析、分析競爭對手、熱點追蹤、找熱門話題、批量互動、批量操作、內容策劃、運營計劃、推廣評論、定時抓帖評論、自動評論、篩選帖子並評論、醫美推廣。"
 ---
 license: MIT-0
 acceptLicenseTerms: true
