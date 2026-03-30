@@ -64,7 +64,7 @@ def _check_tkinter() -> None:
 # 弹窗对话框
 # ---------------------------------------------------------------------------
 
-def show_dialog(post: dict, index: int, total: int) -> Optional[str]:
+def show_dialog(tk_root, post: dict, index: int, total: int) -> Optional[str]:
     """显示单条帖子的回复弹窗。
 
     Returns:
@@ -83,7 +83,7 @@ def show_dialog(post: dict, index: int, total: int) -> Optional[str]:
     like_count = post.get("likeCount") or "0"
     reply_count = post.get("replyCount") or "0"
 
-    root = tk.Tk()
+    root = tk.Toplevel(tk_root)
     root.title(f"批量回復  {index} / {total}  @{username}")
     root.resizable(True, True)
     root.minsize(480, 380)
@@ -247,7 +247,7 @@ def show_dialog(post: dict, index: int, total: int) -> Optional[str]:
     sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
     root.geometry(f"{max(w, 520)}x{max(h, 420)}+{(sw - max(w, 520)) // 2}+{(sh - max(h, 420)) // 2}")
 
-    root.mainloop()
+    tk_root.wait_window(root)
     return result[0]
 
 
@@ -305,6 +305,11 @@ def main() -> None:
         sys.exit(1)
     login_page.close()
 
+    # 整個進程只創建一個 Tk 根窗口並隱藏，後續每條帖子用 Toplevel
+    import tkinter as tk
+    tk_root = tk.Tk()
+    tk_root.withdraw()
+
     results: dict[str, list[str]] = {
         "replied": [],
         "skipped": [],
@@ -360,7 +365,7 @@ def main() -> None:
                 results["already_replied"].append(post_id)
             continue
 
-        comment = show_dialog(post, i + 1, total)
+        comment = show_dialog(tk_root, post, i + 1, total)
 
         if comment == "":  # 用戶點了「結束」
             with results_lock:
@@ -383,6 +388,7 @@ def main() -> None:
     reply_queue.put(None)
     worker_thread.join()
     browser.close()
+    tk_root.destroy()
 
     summary = {
         "total": total,
