@@ -64,7 +64,7 @@ def fill_thread(page: Page, content: PublishContent) -> dict:
 
     # 确保在首页
     page.navigate(HOME_URL)
-    page.wait_for_load(timeout=15)
+    page.wait_for_load(timeout=30)
     sleep_random(1500, 2500)
 
     # 点击发布入口
