@@ -328,19 +328,20 @@ class Page:
             },
         )
         time.sleep(0.1)
-        # 3. execCommand insertText 一次性寫入（觸發 Lexical 原生 input 事件，速度快）
-        self.evaluate(
-            f"""
-            (() => {{
-                const el = document.querySelector({json.dumps(selector)});
-                if (!el) return;
-                el.focus();
-                document.execCommand('selectAll', false, null);
-                document.execCommand('insertText', false, {json.dumps(text)});
-            }})()
-            """
-        )
-        time.sleep(random.uniform(0.3, 0.6))
+        # 3. 逐字输入（随机 30-80ms 间隔，换行符转为 Enter 键）
+        for char in text:
+            if char == "\n":
+                self.press_key("Enter")
+            else:
+                self._send_session(
+                    "Input.dispatchKeyEvent",
+                    {"type": "keyDown", "text": char},
+                )
+                self._send_session(
+                    "Input.dispatchKeyEvent",
+                    {"type": "keyUp", "text": char},
+                )
+            time.sleep(random.uniform(0.03, 0.08))
 
     def get_element_text(self, selector: str) -> str | None:
         """获取元素文本内容。"""
