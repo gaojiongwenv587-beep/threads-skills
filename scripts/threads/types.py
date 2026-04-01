@@ -61,6 +61,7 @@ class ThreadPost:
     reply_count: str = ""
     repost_count: str = ""
     quote_count: str = ""
+    view_count: str = ""
     created_at: str = ""
     images: list[str] = field(default_factory=list)
     videos: list[str] = field(default_factory=list)
@@ -79,6 +80,7 @@ class ThreadPost:
             reply_count=str(d.get("reply_count", d.get("replyCount", ""))),
             repost_count=str(d.get("repost_count", d.get("repostCount", ""))),
             quote_count=str(d.get("quote_count", d.get("quoteCount", ""))),
+            view_count=str(d.get("view_count", d.get("viewCount", ""))),
             created_at=d.get("created_at", d.get("timestamp", "")),
             images=d.get("images", []),
             videos=d.get("videos", []),
@@ -96,6 +98,7 @@ class ThreadPost:
             "replyCount": self.reply_count,
             "repostCount": self.repost_count,
             "quoteCount": self.quote_count,
+            "viewCount": self.view_count,
             "createdAt": self.created_at,
             "isLiked": self.is_liked,
             "isReposted": self.is_reposted,

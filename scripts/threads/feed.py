@@ -325,7 +325,7 @@ def _extract_from_dom(page: Page, max_posts: int) -> list[ThreadPost]:
                         .join('\\n');
 
                     // 互动数：从 role=button 里按前缀匹配（只取第一个匹配，避免重复）
-                    let likeCount = '', replyCount = '', repostCount = '', quoteCount = '';
+                    let likeCount = '', replyCount = '', repostCount = '', quoteCount = '', viewCount = '';
                     const btns = container.querySelectorAll('[role="button"]');
                     for (const btn of btns) {
                         const t = (btn.textContent || '').trim();
@@ -333,6 +333,12 @@ def _extract_from_dom(page: Page, max_posts: int) -> list[ThreadPost]:
                         else if (!replyCount && t.startsWith('回复')) replyCount = t.replace('回复', '').trim();
                         else if (!repostCount && t.startsWith('转发')) repostCount = t.replace('转发', '').trim();
                         else if (!quoteCount && t.startsWith('分享')) quoteCount = t.replace('分享', '').trim();
+                    }
+                    // 浏览量：从包含「次浏览」的 span 提取
+                    const allSpans = container.querySelectorAll('span');
+                    for (const span of allSpans) {
+                        const t = (span.textContent || '').trim();
+                        if (t.endsWith('次浏览')) { viewCount = t.replace('次浏览', '').trim(); break; }
                     }
 
                     // 帖子链接
@@ -344,7 +350,7 @@ def _extract_from_dom(page: Page, max_posts: int) -> list[ThreadPost]:
                         results.push({
                             username, content,
                             datetime, timeText,
-                            likeCount, replyCount, repostCount, quoteCount,
+                            likeCount, replyCount, repostCount, quoteCount, viewCount,
                             url,
                         });
                     }
@@ -375,6 +381,7 @@ def _extract_from_dom(page: Page, max_posts: int) -> list[ThreadPost]:
                 reply_count=item.get("replyCount", ""),
                 repost_count=item.get("repostCount", ""),
                 quote_count=item.get("quoteCount", ""),
+                view_count=item.get("viewCount", ""),
                 created_at=item.get("datetime") or item.get("timeText", ""),
                 url=url,
             ))
