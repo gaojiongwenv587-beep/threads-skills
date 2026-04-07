@@ -3,7 +3,7 @@ license: MIT-0
 acceptLicenseTerms: true
 name: threads-filter
 description: "Threads 智能篩選 Skill。三源採集（Feed+關鍵詞+對標帳號）+ 三維熱度評分（互動/跨源/時效）+ AI雙關篩選（排除詞→語境判斷）。觸發詞：篩選帖子、智能篩選、找目標帖子、哪些帖子適合評論、評論目標篩選、抓帖篩選、先篩選再評論、find posts to comment、filter posts、三維評分、熱度評分。輸出按優先級排序的評論候選列表。"
-version: 1.0.0
+version: 1.1.0
 metadata:
   openclaw:
     homepage: https://github.com/gaojiongwenv587-beep/threads-skills
@@ -19,14 +19,16 @@ metadata:
 
 # threads-filter — 智能篩選 Skill
 
-> 三源採集 → 三維評分 → 雙關篩選 → 輸出評論候選列表
-> Claude 是決策引擎，不是關鍵詞匹配器。
+> 三源採集 → 存檔 → `filter-comment.py` 三維評分 → 輸出評論候選列表
+
+**評分邏輯是真正的 Python 代碼**，不是提示詞估算。
+篩選腳本位於：`~/Desktop/threads-filter-comment/filter-comment.py`
 
 ---
 
 ## PHASE SETUP：首次配置向導
 
-**觸發條件**：`~/.threads/filter-config.json` 不存在，或用戶說「重新配置篩選」。
+**觸發條件**：`~/.threads-filter-comment.json` 不存在，或用戶說「重新配置篩選」。
 
 ### 向導流程
 
@@ -34,99 +36,68 @@ metadata:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 threads-filter 首次配置向導
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Step 1/5：帳號基本資訊
-Step 2/5：目標受眾定義
-Step 3/5：關鍵詞矩陣
-Step 4/5：排除詞庫
-Step 5/5：對標帳號
+Step 1/4：關鍵詞矩陣（keywords / priority_keywords）
+Step 2/4：排除詞庫（exclude_keywords）
+Step 3/4：AI 配置（api_url / api_key / model）
+Step 4/4：確認並寫入
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 ---
 
-**Step 1 / 5 — 帳號基本資訊**
+**Step 1 / 4 — 關鍵詞矩陣**
 
 ```
-帳號名稱（@xxx）是什麼？
+請提供兩類關鍵詞：
 
-帳號身份簡介（1-3句，AI篩選時會以此身份判斷是否適合介入）：
-例：「台灣醫美診所，專注韓式自然整形，擅長雙眼皮修復與輪廓調整。」
+🔑 高優先核心詞（命中即標記 high priority）：
+   例：韓國、首爾、江南、釜山、韓國醫美、飛韓國
+
+🏷️ 一般關鍵詞（命中標記 medium priority）：
+   例：醫美、整形、微整、玻尿酸、保養、護膚、外貌焦慮
 ```
 
-→ 儲存為 `ACCOUNT_NAME`、`ACCOUNT_PROFILE`
+→ 儲存為 `priority_keywords`、`keywords`
 
 ---
 
-**Step 2 / 5 — 目標受眾**
+**Step 2 / 4 — 排除詞庫**
 
 ```
-你最想觸達的受眾是誰？（1-2句）
-例：「25-40歲台灣女性，對韓國醫美有興趣或正在考慮整形的潛在客戶。」
+哪些帖子要直接跳過？
+預設已包含：醫院、診所、歡迎預約、歡迎諮詢、價格、優惠、促銷、line:、微信
+需要補充同業競品名稱嗎？
 ```
 
-→ 儲存為 `ACCOUNT_AUDIENCE`
+→ 儲存為 `exclude_keywords`
 
 ---
 
-**Step 3 / 5 — 關鍵詞矩陣**
+**Step 3 / 4 — AI 配置**
 
 ```
-請提供 3 類關鍵詞（每類 3-8 個）：
-
-🔑 核心詞（最精準，最高優先級）：
-   例：韓國、首爾、江南、釜山
-
-🏷️ 行業詞（領域相關）：
-   例：醫美、整形、雙眼皮、皮膚科、微整形
-
-👥 受眾詞（目標用戶常用語）：
-   例：外貌、保養、護膚、皮膚問題、自信
+是否啟用 AI 語境判斷？（預設：啟用）
+如果啟用，請提供：
+  ai_api_url：（OpenAI 相容端點）
+  ai_api_key：
+  ai_model：（預設 Qwen/Qwen3.5-27B-FP8）
 ```
-
-→ 儲存為 `KEYWORDS.core`、`KEYWORDS.industry`、`KEYWORDS.audience`
 
 ---
 
-**Step 4 / 5 — 排除詞庫**
+**Step 4 / 4 — 寫入配置**
 
-```
-哪些帖子要直接跳過？（預設已包含政治/廣告類，你可以補充同業競品名稱）
-
-預設排除：政治、歡迎預約、歡迎諮詢、價格優惠、促銷、line:、微信
-需要補充同業競品名稱嗎？（例：「診所A、診所B」）
-```
-
-→ 儲存為 `EXCLUDE_KEYWORDS`
-
----
-
-**Step 5 / 5 — 對標帳號**
-
-```
-想監控哪些同類帳號的近期帖子？（最多5個）
-用來發現對方在爆什麼、抓取熱點方向。
-例：@competitor1、@kol_medbeauty
-（不填也可以，後續可補充）
-```
-
-→ 儲存為 `BENCHMARK_ACCOUNTS`
-
----
-
-**配置完成，儲存至 `~/.threads/filter-config.json`：**
+配置寫入 `~/.threads-filter-comment.json`：
 
 ```json
 {
-  "account_name": "@xxx",
-  "account_profile": "帳號身份簡介",
-  "account_audience": "目標受眾描述",
-  "keywords": {
-    "core": ["韓國", "首爾", "江南"],
-    "industry": ["醫美", "整形", "雙眼皮"],
-    "audience": ["外貌", "保養", "護膚"]
-  },
-  "exclude_keywords": ["政治", "歡迎預約", "促銷", "line:"],
-  "benchmark_accounts": ["@account1", "@account2"]
+  "ai_enabled": true,
+  "ai_api_url": "https://...",
+  "ai_api_key": "sk-...",
+  "ai_model": "Qwen/Qwen3.5-27B-FP8",
+  "keywords": ["醫美", "整形", "保養", "護膚", "外貌焦慮"],
+  "exclude_keywords": ["診所", "歡迎預約", "促銷", "line:"],
+  "priority_keywords": ["韓國", "首爾", "江南", "釜山", "韓國醫美"]
 }
 ```
 
@@ -135,165 +106,126 @@ Step 5/5：對標帳號
 ## 使用方式
 
 ```
-執行篩選               → 「幫我篩選適合評論的帖子」
-指定帳號篩選           → 「用 account2 篩選帖子」
-只用 Feed 篩選         → 「只抓首頁 Feed 篩選」
-重新配置               → 「重新配置篩選」
+執行篩選（三源）     → 「幫我篩選適合評論的帖子」
+只用 Feed 篩選       → 「只抓首頁 Feed 篩選」
+關閉 AI 快速篩選     → 「不用 AI，只做關鍵詞篩選」
+指定帳號             → 「用 account2 篩選帖子」
+重新配置             → 「重新配置篩選」
 ```
 
 ---
 
-## PHASE 1：三源採集
+## PHASE 1：三源採集 → 存至暫存文件
 
-> 三個來源並行採集，互相驗證熱度，消除單一信源偏差。
-
-**讀取配置**：
+三個來源分別採集，存為獨立 JSON 文件，供 `filter-comment.py` 讀取。
 
 ```bash
-# 確認登入
-uv run python scripts/cli.py --account "$ACCOUNT" check-login
+ACCOUNT="default"   # 或用戶指定帳號
+TMPDIR="/tmp/threads-filter"
+mkdir -p "$TMPDIR"
 ```
 
 ---
 
-### 來源 A：首頁 Feed（50條）
-
-平台算法選出的高潛力內容，代表當前平台推流偏好。
+### 來源 A：首頁 Feed（50條）→ `/tmp/threads-filter/feed.json`
 
 ```bash
-uv run python scripts/cli.py --account "$ACCOUNT" list-feeds --limit 50
+uv run python scripts/cli.py --account "$ACCOUNT" list-feeds --limit 50 \
+  > /tmp/threads-filter/feed.json
 ```
 
 ---
 
-### 來源 B：關鍵詞矩陣近期搜索
+### 來源 B：關鍵詞搜索 → `/tmp/threads-filter/keyword.json`
 
-讀取 `KEYWORDS.core` + `KEYWORDS.industry` 中的所有詞，逐一搜索（每個取最新 20 條）：
+讀取配置中 `priority_keywords` + `keywords`，逐一搜索（每個取最新 20 條），合併輸出：
 
 ```bash
-# 遍歷每個關鍵詞
-uv run python scripts/cli.py --account "$ACCOUNT" search --query "[關鍵詞]" --type recent --limit 20
+# 對每個關鍵詞執行：
+uv run python scripts/cli.py --account "$ACCOUNT" \
+  search --query "[關鍵詞]" --type recent --limit 20
+# 將所有結果的 posts 陣列合併，寫入 /tmp/threads-filter/keyword.json
+```
+
+若關鍵詞較多（>5個），逐一執行後在內存合併，最終輸出格式：
+```json
+{"posts": [ ...所有帖子... ]}
 ```
 
 ---
 
-### 來源 C：對標帳號近期帖子
+### 來源 C：對標帳號（可選）→ `/tmp/threads-filter/benchmark.json`
 
-若 `BENCHMARK_ACCOUNTS` 不為空，抓取每個對標帳號近期 15 條：
+若用戶提供對標帳號列表，抓取每個帳號近期 15 條：
 
 ```bash
-uv run python scripts/cli.py --account "$ACCOUNT" user-profile --username "@帳號名" --limit 15
-```
-
-**重點關注**：
-- 近 48 小時內發布的帖子
-- 互動數異常高的帖子（爆款信號）
-
----
-
-### 採集彙總
-
-記錄每條帖子：`postId`、`url`、`content`、`likeCount`、`replyCount`、`createdAt`、`author`、`source`（feed/keyword/benchmark）。
-
-去重（同一 `postId` 只保留一條，但記錄其出現在幾個來源）。
-
----
-
-## PHASE 2：三維熱度評分
-
-對每條帖子計算綜合熱度分（滿分 100）：
-
----
-
-**維度一：互動數據分（40分）**
-
-```
-= 標準化((點贊數 + 回覆數×2 + 轉發數×3))
-
-回覆權重最高，因為回覆代表主動參與，是真實熱度的最強信號。
+uv run python scripts/cli.py --account "$ACCOUNT" \
+  user-profile --username "@帳號名" --limit 15
+# 合併後寫入 /tmp/threads-filter/benchmark.json
 ```
 
 ---
 
-**維度二：跨源驗證分（35分）**
+## PHASE 2：呼叫 filter-comment.py 執行三維評分
 
+採集完成後，呼叫真正的 Python 評分腳本：
+
+```bash
+FILTER_SCRIPT=~/Desktop/threads-filter-comment/filter-comment.py
+
+# 三源模式
+python3 "$FILTER_SCRIPT" \
+  --feed-file      /tmp/threads-filter/feed.json \
+  --keyword-file   /tmp/threads-filter/keyword.json \
+  --benchmark-file /tmp/threads-filter/benchmark.json \
+  > /tmp/threads-filter/result.json
+
+# 僅 Feed 模式
+python3 "$FILTER_SCRIPT" \
+  --feed-file /tmp/threads-filter/feed.json \
+  > /tmp/threads-filter/result.json
+
+# 關閉 AI（快速模式）
+python3 "$FILTER_SCRIPT" --no-ai \
+  --feed-file      /tmp/threads-filter/feed.json \
+  --keyword-file   /tmp/threads-filter/keyword.json \
+  > /tmp/threads-filter/result.json
 ```
-僅在 Feed 出現            → +10分
-僅在關鍵詞搜索出現        → +8分
-僅在對標帳號出現          → +8分
-Feed + 關鍵詞 同時出現    → +20分
-Feed + 對標帳號 同時出現  → +22分
-三源都出現                → +35分（極強熱點）
-```
+
+### 三維評分說明（代碼實現，非估算）
+
+| 維度 | 滿分 | 計算方式 |
+|------|------|---------|
+| 互動分 | 40 | 歸一化(點贊 + 回覆×2 + 轉發×3)，以本批次最高值為基準 |
+| 跨源分 | 35 | 按來源組合給分（見下表） |
+| 時效分 | 25 | 按發帖時間衰減（見下表） |
+| **綜合分** | **100** | 互動×0.4 + 跨源×0.35 + 時效×0.25 |
+
+**跨源分對照：**
+
+| 出現來源 | 得分 |
+|---------|------|
+| 三源都出現 | 35 |
+| Feed + 對標帳號 | 22 |
+| Feed + 關鍵詞 | 20 |
+| 僅 Feed | 10 |
+| 僅關鍵詞 | 8 |
+| 僅對標帳號 | 8 |
+
+**時效分對照：**
+
+| 發帖時間 | 得分 |
+|---------|------|
+| 0–6 小時 | 25.0（滿分） |
+| 6–24 小時 | 16.7 |
+| 24–48 小時 | 10.0 |
+| 48 小時以上 | 3.3 |
 
 ---
 
-**維度三：時效性分（25分）**
+## PHASE 3：解析結果並呈現
 
-```
-0-6 小時內   → ×1.5（發酵中，參與價值最高）
-6-24 小時    → ×1.0（正常）
-24-48 小時   → ×0.6（熱度衰減）
-48 小時以上  → ×0.2（基本冷卻）
-```
-
-**綜合熱度分 = 互動分×0.4 + 跨源分×0.35 + 時效分×0.25**
-
----
-
-## PHASE 3：雙關篩選
-
-### 第一關：排除詞過濾（機械過濾）
-
-直接跳過含以下任一條件的帖子：
-
-- 含 `EXCLUDE_KEYWORDS` 中任一詞
-- 政治/歧視/醫療事故等敏感內容
-- 發帖時間 > 48 小時
-- 已評論過（`list-replied` 防重複）
-
----
-
-### 第二關：AI 語境判斷（核心篩選）
-
-對通過第一關的每條帖子，逐條進行語境分析：
-
-```
-你是「{ACCOUNT_NAME}」的官方帳號。
-帳號定位：{ACCOUNT_PROFILE}
-目標受眾：{ACCOUNT_AUDIENCE}
-
-現在要判斷是否以這個帳號的身份在這條帖子下留言。
-
-帖子內容：[帖子全文]
-
-請仔細閱讀後回答：
-1. 這個人是什麼身份？（目標受眾/潛在用戶/從業者/在吐槽/其他）
-2. 他現在的情緒是？（期待/糾結/擔憂/負面/中性）
-3. 他真正的需求是什麼？（想要建議/想要比較/想要安全感/單純分享/其他）
-4. 如果以「{ACCOUNT_NAME}」的專業身份回應，能為對方提供真正有價值的資訊嗎？
-   還是會顯得突兀、像在打廣告？
-
-判斷標準：
-✅ 適合：對方有真實需求，本帳號的專業判斷能真正幫到他，介入自然不違和
-❌ 不適合：純粹在吐槽 / 是同行或競品 / 情緒激烈不適合介入 / 插嘴只會顯得刻意
-
-返回 JSON（不要其他文字）：
-{"should_comment": true/false, "identity": "身份", "emotion": "情緒", "need": "需求", "reason": "判斷理由", "priority": "high/medium/low"}
-```
-
-**優先級規則**：
-
-| 條件 | 優先級 |
-|------|--------|
-| `should_comment: true` + 含核心詞 + 熱度高 | high |
-| `should_comment: true` + 含行業詞 | medium |
-| `should_comment: true` + 受眾相關 | low |
-| `should_comment: false` | 跳過（僅點贊候選） |
-
----
-
-## 輸出格式
+讀取 `/tmp/threads-filter/result.json`，按以下格式呈現給用戶：
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -301,27 +233,53 @@ Feed + 對標帳號 同時出現  → +22分
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 採集來源
   Feed          XX 條
-  關鍵詞搜索    XX 條（X 個詞）
-  對標帳號      XX 條（X 個帳號）
+  關鍵詞搜索    XX 條
+  對標帳號      XX 條
   去重後總計    XX 條
 
-排除詞過濾後   XX 條候選
+關鍵詞篩選後   XX 條候選
 AI 語境判斷後  XX 條適合評論
 
 優先級分布
-  🔴 高優先    X 條（核心詞命中 + 有真實需求）
-  🟡 中優先    X 條（行業詞命中 + 適合介入）
-  🟢 低優先    X 條（潛在受眾相關）
+  🔴 高優先（priority: high）  X 條
+  🟡 中優先（priority: medium）X 條
 
-建議本次執行：取 高優先全部 + 中優先前 N 條
+建議本次執行：取高優先全部 + 中優先前 N 條
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 高優先帖子：
 1. [@用戶] 帖子摘要（30字內）
-   熱度分：XX｜身份：潛在用戶｜情緒：糾結｜需求：想要建議
+   綜合分：XX｜互動：XX｜跨源：XX｜時效：XX
+   來源：feed + keyword
    URL: https://...
+   AI評論：「...」
 
 2. ...
+```
+
+結果 JSON 欄位說明：
+
+```json
+{
+  "total_input": 120,
+  "total_deduplicated": 95,
+  "total_filtered": 8,
+  "results": [
+    {
+      "post": { "postId": "...", "content": "...", ... },
+      "sources": ["feed", "keyword"],
+      "priority": "high",
+      "match_reason": "韓國/首爾相關",
+      "score_total": 72.3,
+      "score_interaction": 35.0,
+      "score_cross_source": 20.0,
+      "score_timeliness": 25.0,
+      "ai_should_comment": true,
+      "ai_comment": "...",
+      "ai_reason": "..."
+    }
+  ]
+}
 ```
 
 ---
@@ -330,6 +288,6 @@ AI 語境判斷後  XX 條適合評論
 
 ```
 篩選完成後 → 交給 threads-interact 執行 reply-thread 評論
-篩選結果   → 可直接輸入 threads-filter-comment 做進一步 AI 評論生成
+篩選結果   → /tmp/threads-filter/result.json 可直接作為下一步輸入
 配置管理   → 說「重新配置篩選」進入向導
 ```
