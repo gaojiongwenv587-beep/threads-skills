@@ -2,7 +2,7 @@
 license: MIT-0
 acceptLicenseTerms: true
 name: threads-explore
-description: "Threads 內容抓取與瀏覽。觸發詞：搜索、查找、瀏覽首頁、刷一下、抓帖子、爬帖子、獲取帖子、看帖子詳情、查看用戶、用戶主頁、list-feeds、search、get-thread、user-profile、抓取數據。"
+description: "Threads 內容抓取與瀏覽。觸發詞：搜索、查找、瀏覽首頁、刷一下、抓帖子、爬帖子、獲取帖子、看帖子詳情、查看用戶、用戶主頁、歷史回復、回復記錄、list-feeds、search、get-thread、user-profile、user-replies、抓取數據。"
 version: 1.0.0
 metadata:
   openclaw:
@@ -93,12 +93,22 @@ python scripts/cli.py user-profile --username "someuser" --limit 20
 
 返回用户基本信息（粉丝数、简介）和最近帖子列表。
 
+### 用户历史回复
+
+```bash
+python scripts/cli.py user-replies --username "@someuser"
+python scripts/cli.py user-replies --username "someuser" --limit 30
+```
+
+抓取 `/@用户名/replies` Tab 的历史回复列表，字段与 `user-profile` 帖子相同。
+
 ## 决策逻辑
 
 1. 用户说"首页" / "刷一下" / "看看推荐" → `list-feeds`
 2. 用户提供关键词说"搜索" → `search --query 关键词`，热门用默认，最新加 `--type recent`，找人加 `--type profiles`
 3. 用户提供 Thread URL → `get-thread --url URL`
 4. 用户提供用户名 → `user-profile --username 用户名`
+5. 用户说"历史回复" / "回复记录" / 用户名 + "回复" → `user-replies --username 用户名`
 
 ## 返回数据说明
 
