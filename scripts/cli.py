@@ -171,6 +171,15 @@ def cmd_user_profile(args: argparse.Namespace) -> None:
     _ok(result.to_dict())
 
 
+def cmd_user_replies(args: argparse.Namespace) -> None:
+    from threads.profile import get_user_replies
+
+    page = _get_page(args)
+    ensure_logged_in(page)
+    posts = get_user_replies(page, args.username, max_posts=args.limit)
+    _ok({"username": args.username.lstrip("@"), "posts": [p.to_dict() for p in posts]})
+
+
 def cmd_search(args: argparse.Namespace) -> None:
     from threads.search import search
 
@@ -384,6 +393,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--username", required=True, help="用户名（可带 @）")
     p.add_argument("--limit", type=int, default=12, help="最多返回帖子数")
 
+    p = sub.add_parser("user-replies", help="获取用户历史回复 Tab")
+    p.add_argument("--username", required=True, help="用户名（可带 @）")
+    p.add_argument("--limit", type=int, default=20, help="最多返回回复数")
+
     p = sub.add_parser("search", help="搜索 Threads")
     p.add_argument("--query", required=True, help="搜索关键词")
     p.add_argument(
@@ -447,6 +460,7 @@ _COMMAND_MAP = {
     "list-feeds": cmd_list_feeds,
     "get-thread": cmd_get_thread,
     "user-profile": cmd_user_profile,
+    "user-replies": cmd_user_replies,
     "search": cmd_search,
     "fill-thread": cmd_fill_thread,
     "click-publish": cmd_click_publish,

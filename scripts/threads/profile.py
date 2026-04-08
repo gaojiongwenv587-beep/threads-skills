@@ -10,7 +10,7 @@ from .cdp import Page
 from .feed import _parse_single_post, _try_extract_from_scripts
 from .human import navigation_delay
 from .types import ThreadPost, ThreadsUser, UserProfile
-from .urls import profile_url
+from .urls import profile_url, replies_url
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,28 @@ def get_user_profile(page: Page, username: str, max_posts: int = 12) -> UserProf
     posts = _extract_user_posts(page, max_posts)
 
     return UserProfile(user=user, posts=posts)
+
+
+def get_user_replies(page: Page, username: str, max_posts: int = 20) -> list[ThreadPost]:
+    """获取用户「回复」Tab 的历史回复列表。
+
+    Args:
+        page: CDP 页面对象。
+        username: 用户名（可带或不带 @）。
+        max_posts: 最多返回回复数。
+
+    Returns:
+        ThreadPost 列表（每条是用户发出的回复帖）。
+    """
+    username = username.lstrip("@")
+    url = replies_url(username)
+    logger.info("获取用户历史回复: @%s/replies", username)
+
+    page.navigate(url)
+    page.wait_for_load(timeout=20)
+    navigation_delay()
+
+    return _extract_user_posts(page, max_posts)
 
 
 def _extract_user_info(page: Page, username: str) -> ThreadsUser:

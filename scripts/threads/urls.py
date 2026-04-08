@@ -12,6 +12,12 @@ def profile_url(username: str) -> str:
     return f"{BASE_URL}/@{username}"
 
 
+def replies_url(username: str) -> str:
+    """用户历史回复 Tab URL。"""
+    username = username.lstrip("@")
+    return f"{BASE_URL}/@{username}/replies"
+
+
 def post_url(username: str, post_id: str) -> str:
     """单条 Thread URL。"""
     username = username.lstrip("@")
