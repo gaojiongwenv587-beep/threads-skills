@@ -104,6 +104,15 @@ python scripts/cli.py user-profile --username "@someuser"
 python scripts/cli.py user-profile --username "someuser" --limit 20
 ```
 
+### 用户历史回复（回复 Tab）
+
+```bash
+python scripts/cli.py user-replies --username "@someuser"
+python scripts/cli.py user-replies --username "someuser" --limit 30
+```
+
+抓取 `/@用户名/replies` 页面的历史回复列表，字段与 `user-profile` 相同。
+
 ---
 
 ## 三、内容发布
@@ -192,6 +201,7 @@ uv run python scripts/reply_assistant.py --posts-file /tmp/threads_batch.json
 | 提供关键词"搜索" | `search --query` |
 | 提供 Thread URL | `get-thread` |
 | 提供用户名 | `user-profile` |
+| "历史回复" / "回复记录" / 用户名 + "回复" | `user-replies` |
 | "发帖" / "写内容" | `fill-thread` 预览 → 用户确认 → `click-publish` |
 | "直接发" | `post-thread` |
 | "点赞" / "转发" / "回复" / "关注" | 直接执行对应命令 |
