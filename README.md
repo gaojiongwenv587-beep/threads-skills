@@ -1,5 +1,10 @@
 # Threads Skills
 
+[![Stars](https://img.shields.io/github/stars/gaojiongwenv587-beep/threads-skills?style=flat-square)](https://github.com/gaojiongwenv587-beep/threads-skills/stargazers)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-brightgreen?style=flat-square)](https://www.python.org/)
+[![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet?style=flat-square)](https://openclaw.dev)
+
 > **Claude Code Skill** — 可在 [OpenClaw](https://openclaw.dev) 中直接安装使用。
 
 用 AI 驱动的方式操作 Threads，把重复的社媒运营工作交给 Claude 自动完成。
@@ -12,6 +17,12 @@
 - 🤖 **OpenClaw 友好** — 所有命令 JSON 输出，Claude 可直接读取并串联工作流
 
 基于 **Chrome CDP** 驱动真实浏览器，无需破解 API，登录一次长期有效。
+
+## 通过 OpenClaw 安装（推荐）
+
+在 [OpenClaw](https://openclaw.dev) 中搜索 `threads-skills` 即可一键安装全部 Skills，无需手动配置环境。
+
+---
 
 ## 系统要求
 
