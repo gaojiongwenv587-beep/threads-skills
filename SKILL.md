@@ -86,6 +86,9 @@ python scripts/cli.py search --query "設計" --limit 10
 python scripts/cli.py get-thread --url "https://www.threads.net/@user/post/xxx"
 python scripts/cli.py user-profile --username "@someuser" --limit 20
 python scripts/cli.py user-replies --username "@someuser" --limit 30
+
+# 全量抓取：保留「原貼 + 回覆」配對，無限滾動直到頁面底部
+python scripts/cli.py user-replies-grouped --username "@someuser"
 ```
 
 **決策邏輯：**
@@ -94,6 +97,7 @@ python scripts/cli.py user-replies --username "@someuser" --limit 30
 3. 用戶提供 Thread URL → `get-thread --url URL`
 4. 用戶提供用戶名 → `user-profile --username 用戶名`
 5. 用戶說「歷史回覆」→ `user-replies --username 用戶名`
+6. 用戶說「全部回覆」/「抓取所有回覆」/「分析回覆風格」→ `user-replies-grouped --username 用戶名`（無數量限制，自動滾動到底）
 
 ---
 

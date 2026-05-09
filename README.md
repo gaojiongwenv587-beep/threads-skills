@@ -89,6 +89,8 @@ python scripts/cli.py get-thread --url "https://www.threads.net/@user/post/xxx"
 | `list-feeds [--limit N]` | 获取首页 Feed |
 | `get-thread --url URL` | 获取帖子详情和回复 |
 | `user-profile --username @用户名 [--limit N]` | 获取用户主页 |
+| `user-replies --username @用户名 [--limit N]` | 获取用户历史回复 Tab（平铺列表） |
+| `user-replies-grouped --username @用户名` | 获取用户**全部**回复，保留「原贴 + 回复」配对，无限滚动直到页面底部 |
 | `search --query 关键词 [--type all\|recent\|profiles] [--limit N]` | 搜索 |
 | `fill-thread --content 内容 [--images 路径或URL ...]` | 填写帖子（预览用） |
 | `click-publish` | 确认发布（fill-thread 之后调用） |
@@ -119,6 +121,38 @@ python scripts/cli.py --account work post-thread --content "工作帖子"
 # 查看所有账号
 python scripts/cli.py list-accounts
 ```
+
+## 用户回复全量抓取
+
+`user-replies-grouped` 专为**完整抓取对标账号回复数据**设计，用于分析回复风格和策略。
+
+```bash
+# 抓取 @someuser 的所有历史回复，输出原贴+回复配对 JSON
+python scripts/cli.py user-replies-grouped --username "@someuser"
+```
+
+**技术亮点：**
+- 在页面加载前注入 **fetch/XHR 拦截器**，捕获 Threads 内部 API 响应
+- 结合初始 SSR script 标签数据 + 动态 DOM 提取，三重来源去重合并
+- 无限滚动直到页面真正触底（连续 5 次无新增才停止）
+- 智能过滤：自动排除时间戳（`21小时`、`小時`）、日期（`2026-4-10`）、纯数字（点赞数）等干扰内容
+- 实测：可抓取 600+ 组配对，页面高度从 5000px 滚动至 450000px+
+
+**输出格式：**
+```json
+{
+  "username": "someuser",
+  "total_groups": 685,
+  "groups": [
+    [
+      { "author": { "username": "original_poster" }, "content": "原贴内容..." },
+      { "author": { "username": "someuser" }, "content": "回复内容..." }
+    ]
+  ]
+}
+```
+
+---
 
 ## 批量回覆助手
 

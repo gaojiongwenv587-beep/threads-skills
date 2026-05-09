@@ -180,6 +180,22 @@ def cmd_user_replies(args: argparse.Namespace) -> None:
     _ok({"username": args.username.lstrip("@"), "posts": [p.to_dict() for p in posts]})
 
 
+def cmd_user_replies_grouped(args: argparse.Namespace) -> None:
+    from threads.profile import get_user_replies_grouped
+
+    page = _get_page(args)
+    ensure_logged_in(page)
+    groups = get_user_replies_grouped(page, args.username)
+    _ok({
+        "username": args.username.lstrip("@"),
+        "total_groups": len(groups),
+        "groups": [
+            [p.to_dict() for p in group]
+            for group in groups
+        ],
+    })
+
+
 def cmd_search(args: argparse.Namespace) -> None:
     from threads.search import search
 
@@ -397,6 +413,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--username", required=True, help="用户名（可带 @）")
     p.add_argument("--limit", type=int, default=20, help="最多返回回复数")
 
+    p = sub.add_parser("user-replies-grouped", help="获取用户全部回复（无限滚动，保留原贴+回复配对）")
+    p.add_argument("--username", required=True, help="用户名（可带 @）")
+
     p = sub.add_parser("search", help="搜索 Threads")
     p.add_argument("--query", required=True, help="搜索关键词")
     p.add_argument(
@@ -461,6 +480,7 @@ _COMMAND_MAP = {
     "get-thread": cmd_get_thread,
     "user-profile": cmd_user_profile,
     "user-replies": cmd_user_replies,
+    "user-replies-grouped": cmd_user_replies_grouped,
     "search": cmd_search,
     "fill-thread": cmd_fill_thread,
     "click-publish": cmd_click_publish,

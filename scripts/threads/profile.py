@@ -62,6 +62,21 @@ def get_user_replies(page: Page, username: str, max_posts: int = 20) -> list[Thr
     return _extract_user_posts(page, max_posts)
 
 
+def get_user_replies_grouped(page: Page, username: str) -> list[list[ThreadPost]]:
+    """获取用户「回复」Tab 的所有回复，以 thread 分组（原贴 + 回复 配对）。
+
+    Args:
+        page: CDP 页面对象。
+        username: 用户名（可带或不带 @）。
+
+    Returns:
+        list of groups，每组是一个 thread_items 内的帖子列表（[原贴, 回复] 或仅回复）。
+    """
+    username = username.lstrip("@")
+    logger.info("获取用户全部回复（分组模式）: @%s/replies", username)
+    return _extract_all_reply_groups(page, username)
+
+
 def _extract_user_info(page: Page, username: str) -> ThreadsUser:
     """从页面中提取用户基本信息。"""
     # 尝试从 JSON 数据提取
@@ -264,3 +279,166 @@ def _parse_posts_from_json(data: object, max_posts: int) -> list[ThreadPost]:
 
     _find(data)
     return posts
+
+
+def _extract_all_reply_groups(page: Page, username: str) -> list[list[ThreadPost]]:
+    """提取所有 thread 分组（原贴 + 回复 配对）。
+
+    策略：
+    1. 在页面加载前注入 fetch/XHR 拦截器捕获所有包含 thread_items 的 API 响应
+    2. 页面加载后从 script 标签提取初始数据
+    3. 合并去重
+    """
+    from .human import sleep_random
+
+    # 注入拦截器（在下次导航时生效）
+    try:
+        page._send_session("Page.addScriptToEvaluateOnNewDocument", {
+            "source": """
+                window.__threadsCaptured__ = [];
+                const _origFetch = window.fetch;
+                window.fetch = async function(...args) {
+                    const resp = await _origFetch(...args);
+                    try {
+                        const clone = resp.clone();
+                        const text = await clone.text();
+                        if (text.includes('thread_items')) {
+                            window.__threadsCaptured__.push(text);
+                        }
+                    } catch(e) {}
+                    return resp;
+                };
+                const _origXHRSend = window.XMLHttpRequest.prototype.send;
+                window.XMLHttpRequest.prototype.send = function() {
+                    this.addEventListener('load', function() {
+                        try {
+                            if (this.responseText && this.responseText.includes('thread_items')) {
+                                window.__threadsCaptured__.push(this.responseText);
+                            }
+                        } catch(e) {}
+                    });
+                    return _origXHRSend.apply(this, arguments);
+                };
+            """
+        })
+    except Exception as e:
+        logger.debug("注入拦截器失败（忽略）: %s", e)
+
+    # 重新导航以触发拦截器
+    url = __import__("threads.urls", fromlist=["replies_url"]).replies_url(username)
+    page.navigate(url)
+    page.wait_for_load(timeout=20)
+    from .human import navigation_delay
+    navigation_delay()
+
+    seen_group_keys: set[str] = set()
+    all_groups: list[list[ThreadPost]] = []
+
+    def _add_groups_from_raw(raw: str) -> int:
+        new = 0
+        try:
+            data = json.loads(raw)
+            for group in _parse_thread_groups_from_json(data):
+                if not group:
+                    continue
+                key = group[0].post_id or group[0].url or group[0].content[:50]
+                if key and key not in seen_group_keys:
+                    seen_group_keys.add(key)
+                    all_groups.append(group)
+                    new += 1
+        except Exception as e:
+            logger.debug("解析分组 JSON 失败: %s", e)
+        return new
+
+    # 1. 从 fetch/XHR 拦截器获取 API 响应
+    captured_raw = page.evaluate("JSON.stringify(window.__threadsCaptured__ || [])")
+    if captured_raw:
+        try:
+            for raw in json.loads(captured_raw):
+                _add_groups_from_raw(raw)
+        except Exception:
+            pass
+    logger.info("从 API 拦截器获取 %d 组", len(all_groups))
+
+    # 2. 从 script 标签获取初始 SSR 数据
+    scripts_json = page.evaluate(
+        """
+        (() => {
+            const scripts = document.querySelectorAll('script[type="application/json"]');
+            const results = [];
+            for (const s of scripts) {
+                const t = s.textContent || '';
+                if (t.length > 500 && t.includes('thread_items')) results.push(t);
+            }
+            results.sort((a, b) => b.length - a.length);
+            return JSON.stringify(results);
+        })()
+        """
+    )
+    if scripts_json:
+        try:
+            for raw in json.loads(scripts_json):
+                _add_groups_from_raw(raw)
+        except Exception:
+            pass
+    logger.info("合并 script 标签后共 %d 组", len(all_groups))
+
+    # 3. 尝试滚动加载更多（最多 10 轮，3 次无新增停止）
+    stall_count = 0
+    for scroll_i in range(10):
+        prev_height = page.evaluate("document.body.scrollHeight")
+        page.scroll_to_bottom()
+        for _ in range(15):
+            sleep_random(400, 700)
+            new_height = page.evaluate("document.body.scrollHeight")
+            if new_height > prev_height:
+                break
+
+        # 检查是否有新的 API 响应
+        captured_raw = page.evaluate("JSON.stringify(window.__threadsCaptured__ || [])")
+        new_count = 0
+        if captured_raw:
+            try:
+                for raw in json.loads(captured_raw):
+                    new_count += _add_groups_from_raw(raw)
+            except Exception:
+                pass
+        # 重置拦截缓冲区
+        page.evaluate("window.__threadsCaptured__ = []")
+
+        logger.info("滚动第 %d 轮，新增 %d 组，共 %d 组", scroll_i + 1, new_count, len(all_groups))
+        if new_count == 0:
+            stall_count += 1
+            if stall_count >= 3:
+                logger.info("连续 3 次无新增，停止滚动")
+                break
+        else:
+            stall_count = 0
+
+    return all_groups
+
+
+def _parse_thread_groups_from_json(data: object) -> list[list[ThreadPost]]:
+    """递归从 JSON 中提取 thread 分组（保留 thread_items 配对结构）。"""
+    groups: list[list[ThreadPost]] = []
+
+    def _find(obj: object) -> None:
+        if isinstance(obj, dict):
+            if "thread_items" in obj:
+                group: list[ThreadPost] = []
+                for item in obj["thread_items"]:
+                    if isinstance(item, dict) and "post" in item:
+                        post = _parse_single_post(item["post"])
+                        if post:
+                            group.append(post)
+                if group:
+                    groups.append(group)
+            else:
+                for v in obj.values():
+                    _find(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                _find(item)
+
+    _find(data)
+    return groups
