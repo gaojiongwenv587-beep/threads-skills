@@ -40,6 +40,34 @@ def get_user_profile(page: Page, username: str, max_posts: int = 12) -> UserProf
     return UserProfile(user=user, posts=posts)
 
 
+_INTERCEPTOR_JS = """
+window.__threadsCaptured__ = [];
+const _origFetch = window.fetch;
+window.fetch = async function(...args) {
+    const resp = await _origFetch(...args);
+    try {
+        const clone = resp.clone();
+        const text = await clone.text();
+        if (text.includes('thread_items')) {
+            window.__threadsCaptured__.push(text);
+        }
+    } catch(e) {}
+    return resp;
+};
+const _origXHRSend = XMLHttpRequest.prototype.send;
+XMLHttpRequest.prototype.send = function() {
+    this.addEventListener('load', function() {
+        try {
+            if (this.responseText && this.responseText.includes('thread_items')) {
+                window.__threadsCaptured__.push(this.responseText);
+            }
+        } catch(e) {}
+    });
+    return _origXHRSend.apply(this, arguments);
+};
+"""
+
+
 def get_user_replies(page: Page, username: str, max_posts: int = 20) -> list[ThreadPost]:
     """获取用户「回复」Tab 的历史回复列表。
 
@@ -55,11 +83,13 @@ def get_user_replies(page: Page, username: str, max_posts: int = 20) -> list[Thr
     url = replies_url(username)
     logger.info("获取用户历史回复: @%s/replies", username)
 
+    # 注入拦截器必须在 navigate 之前
+    page._send_session("Page.addScriptToEvaluateOnNewDocument", {"source": _INTERCEPTOR_JS})
     page.navigate(url)
     page.wait_for_load(timeout=20)
     navigation_delay()
 
-    return _extract_user_posts(page, max_posts)
+    return _extract_user_posts(page, max_posts, use_interceptor=True)
 
 
 def get_user_replies_grouped(page: Page, username: str) -> list[list[ThreadPost]]:
@@ -185,7 +215,9 @@ def _extract_user_from_dom(page: Page, username: str) -> ThreadsUser:
     return ThreadsUser(username=username)
 
 
-def _extract_user_posts(page: Page, max_posts: int) -> list[ThreadPost]:
+def _extract_user_posts(
+    page: Page, max_posts: int, use_interceptor: bool = False
+) -> list[ThreadPost]:
     """提取用户主页的帖子列表，滚动加载直到满足数量要求。"""
     from .human import sleep_random
 
@@ -194,8 +226,21 @@ def _extract_user_posts(page: Page, max_posts: int) -> list[ThreadPost]:
     max_scrolls = max(10, max_posts // 4 * 3)
     stall_count = 0
 
+    def _ingest(raw: str) -> None:
+        try:
+            data = json.loads(raw)
+            for p in _parse_posts_from_json(data, max_posts):
+                key = p.post_id or p.url or p.content[:50]
+                if key and key not in seen_keys:
+                    seen_keys.add(key)
+                    all_posts.append(p)
+        except Exception as e:
+            logger.debug("解析帖子 JSON 失败: %s", e)
+
     for scroll_i in range(max_scrolls):
-        # 遍历所有含 thread_items 的 script 标签
+        prev_len = len(all_posts)
+
+        # 1) 从 script 标签读取（SSR 首屏数据）
         scripts_json = page.evaluate(
             """
             (() => {
@@ -210,26 +255,25 @@ def _extract_user_posts(page: Page, max_posts: int) -> list[ThreadPost]:
             })()
             """
         )
-
-        batch: list[ThreadPost] = []
         if scripts_json:
             try:
-                scripts = json.loads(scripts_json)
-                for raw in scripts:
-                    try:
-                        data = json.loads(raw)
-                        batch.extend(_parse_posts_from_json(data, max_posts))
-                    except Exception as e:
-                        logger.debug("解析用户帖子 JSON 失败: %s", e)
+                for raw in json.loads(scripts_json):
+                    _ingest(raw)
             except Exception:
                 pass
 
-        prev_len = len(all_posts)
-        for p in batch:
-            key = p.post_id or p.url or p.content[:50]
-            if key and key not in seen_keys:
-                seen_keys.add(key)
-                all_posts.append(p)
+        # 2) 从拦截器缓冲区读取（滚动懒加载的 XHR/fetch 数据）
+        if use_interceptor:
+            try:
+                captured_json = page.evaluate(
+                    "JSON.stringify(window.__threadsCaptured__ || [])"
+                )
+                if captured_json:
+                    for raw in json.loads(captured_json):
+                        _ingest(raw)
+                    page.evaluate("window.__threadsCaptured__ = []")
+            except Exception as e:
+                logger.debug("读取拦截器缓冲区失败: %s", e)
 
         new_count = len(all_posts) - prev_len
         logger.info("用户帖子第 %d 轮后共 %d 条（新增 %d）", scroll_i + 1, len(all_posts), new_count)
@@ -239,7 +283,7 @@ def _extract_user_posts(page: Page, max_posts: int) -> list[ThreadPost]:
 
         if new_count == 0:
             stall_count += 1
-            if stall_count >= 3:
+            if stall_count >= 5:
                 logger.info("连续 %d 次无新增，停止滚动", stall_count)
                 break
         else:
@@ -247,8 +291,8 @@ def _extract_user_posts(page: Page, max_posts: int) -> list[ThreadPost]:
 
         prev_height = page.evaluate("document.body.scrollHeight")
         page.scroll_to_bottom()
-        for _ in range(12):
-            sleep_random(400, 600)
+        for _ in range(15):
+            sleep_random(500, 800)
             new_height = page.evaluate("document.body.scrollHeight")
             if new_height > prev_height:
                 break
