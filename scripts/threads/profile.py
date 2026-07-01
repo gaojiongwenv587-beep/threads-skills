@@ -30,12 +30,14 @@ def get_user_profile(page: Page, username: str, max_posts: int = 12) -> UserProf
     url = profile_url(username)
     logger.info("获取用户主页: @%s", username)
 
+    # 注入拦截器必须在 navigate 之前
+    page._send_session("Page.addScriptToEvaluateOnNewDocument", {"source": _INTERCEPTOR_JS})
     page.navigate(url)
     page.wait_for_load(timeout=20)
     navigation_delay()
 
     user = _extract_user_info(page, username)
-    posts = _extract_user_posts(page, max_posts)
+    posts = _extract_user_posts(page, max_posts, use_interceptor=True)
 
     return UserProfile(user=user, posts=posts)
 
