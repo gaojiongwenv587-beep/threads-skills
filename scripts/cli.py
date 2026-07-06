@@ -120,46 +120,91 @@ def cmd_list_feeds(args: argparse.Namespace) -> None:
 
 
 def cmd_get_thread(args: argparse.Namespace) -> None:
-    """获取单条 Thread 详情。"""
+    """获取单条 Thread 详情及全部回复（含滚动加载）。"""
     page = _get_page(args)
     ensure_logged_in(page)
 
+    from threads.feed import _parse_threads_json
+    from threads.human import navigation_delay, sleep_random
+    from threads.profile import _INTERCEPTOR_JS
+    import json as _json
+
+    # 注入拦截器后再导航
+    page._send_session("Page.addScriptToEvaluateOnNewDocument", {"source": _INTERCEPTOR_JS})
     page.navigate(args.url)
     page.wait_for_load(timeout=15)
-
-    from threads.feed import _try_extract_from_scripts
-    from threads.human import navigation_delay
-    import time
-
     navigation_delay()
-    # 提取主帖 + 回复
+
+    seen_ids: set[str] = set()
+    all_posts = []
+
+    def _ingest(raw_str: str) -> int:
+        added = 0
+        try:
+            data = _json.loads(raw_str)
+            for p in _parse_threads_json(data, max_posts=99999):
+                key = p.post_id or p.url or p.content[:50]
+                if key and key not in seen_ids:
+                    seen_ids.add(key)
+                    all_posts.append(p)
+                    added += 1
+        except Exception:
+            pass
+        return added
+
+    # 1) SSR script 标签
     raw = page.evaluate(
         """
         (() => {
             const scripts = document.querySelectorAll('script[type="application/json"]');
+            const results = [];
             for (const s of scripts) {
-                try {
-                    const d = JSON.parse(s.textContent);
-                    if (JSON.stringify(d).includes('thread_items')) return s.textContent;
-                } catch(e) {}
+                const t = s.textContent || '';
+                if (t.length > 500 && t.includes('thread_items')) results.push(t);
             }
-            return null;
+            return JSON.stringify(results);
         })()
         """
     )
-
     if raw:
-        import json as _json
-        from threads.feed import _parse_threads_json
+        for r in _json.loads(raw):
+            _ingest(r)
 
-        data = _json.loads(raw)
-        posts = _parse_threads_json(data, max_posts=50)
-        _ok({
-            "url": args.url,
-            "posts": [p.to_dict() for p in posts],
-        })
-    else:
-        _ok({"url": args.url, "posts": [], "message": "未提取到结构化数据"})
+    # 2) 拦截器缓冲区
+    captured = page.evaluate("JSON.stringify(window.__threadsCaptured__ || [])")
+    if captured:
+        for r in _json.loads(captured):
+            _ingest(r)
+        page.evaluate("window.__threadsCaptured__ = []")
+
+    # 3) 滚动加载更多回复
+    stall = 0
+    for _ in range(60):
+        prev_len = len(all_posts)
+        prev_height = page.evaluate("document.body.scrollHeight")
+        page.scroll_to_bottom()
+        for __ in range(15):
+            sleep_random(500, 800)
+            if page.evaluate("document.body.scrollHeight") > prev_height:
+                break
+
+        captured = page.evaluate("JSON.stringify(window.__threadsCaptured__ || [])")
+        if captured:
+            for r in _json.loads(captured):
+                _ingest(r)
+            page.evaluate("window.__threadsCaptured__ = []")
+
+        if len(all_posts) == prev_len:
+            stall += 1
+            if stall >= 5:
+                break
+        else:
+            stall = 0
+
+    _ok({
+        "url": args.url,
+        "posts": [p.to_dict() for p in all_posts],
+    })
 
 
 def cmd_user_profile(args: argparse.Namespace) -> None:
